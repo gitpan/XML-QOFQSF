@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<qof-qsf xmlns="http://qof.sourceforge.net/">
+  <book count="1">
+    <book-guid>d9e364c04667a05721c2a427bab4ad1f</book-guid>
+    <object type="pilot_datebook" count="1">
+      <string type="category">CPAN</string>
+      <string type="note"/>
+      <string type="repeat_type">repeatNone</string>
+      <string type="description">test_one</string>
+      <string type="advance_unit"/>
+      <string type="repeat_day"/>
+      <string type="repeat_week_start"/>
+      <guid type="guid">c87a3394f098017401585ebf238b5954</guid>
+      <boolean type="use_alarm">false</boolean>
+      <boolean type="repeat_forever">true</boolean>
+      <boolean type="transient_repeat">false</boolean>
+      <boolean type="untimed_event">false</boolean>
+      <time type="start_time">2006-11-04T09:00:00Z</time>
+      <time type="end_time">2006-11-04T17:00:00Z</time>
+      <time type="repeat_end">2006-11-04T17:00:00Z</time>
+      <gint32 type="repeat_frequency">0</gint32>
+      <gint32 type="exception_count">0</gint32>
+      <gint32 type="alarm_advance">0</gint32>
+    </object>
+    <object type="pilot_expenses" count="2">
+      <string type="form_of_payment">Unfiled</string>
+      <string type="distance_unit">Miles</string>
+      <string type="expense_vendor">distance</string>
+      <string type="expense_city">test_one</string>
+      <string type="expense_attendees"/>
+      <string type="category">CPAN</string>
+      <string type="expense_note"/>
+      <string type="type_of_expense">Mileage</string>
+      <guid type="guid">676ef3d002e4ab1a24b10768963a2079</guid>
+      <numeric type="expense_amount">8200/100</numeric>
+      <time type="expense_date">2006-11-04T00:00:00Z</time>
+      <gint32 type="currency_code">22</gint32>
+      <kvp type="currency_lookup" path="expense/currency/mnemonic" value="string">GBP</kvp>
+      <kvp type="currency_lookup" path="expense/currency/symbol" value="string">£</kvp>
+      <kvp type="currency_lookup" path="expense/currency/fraction" value="gint64">100</kvp>
+    </object>
+    <object type="pilot_expenses" count="3">
+      <string type="form_of_payment">Prepaid</string>
+      <string type="distance_unit"/>
+      <string type="expense_vendor">money</string>
+      <string type="expense_city">test_one</string>
+      <string type="expense_attendees"/>
+      <string type="category">CPAN</string>
+      <string type="expense_note"/>
+      <string type="type_of_expense">Incidentals</string>
+      <guid type="guid">f70faac1885a7c5eca831d1c800f5682</guid>
+      <numeric type="expense_amount">50/100</numeric>
+      <time type="expense_date">2006-11-04T00:00:00Z</time>
+      <gint32 type="currency_code">22</gint32>
+      <kvp type="currency_lookup" path="expense/currency/mnemonic" value="string">GBP</kvp>
+      <kvp type="currency_lookup" path="expense/currency/symbol" value="string">£</kvp>
+      <kvp type="currency_lookup" path="expense/currency/fraction" value="gint64">100</kvp>
+    </object>
+    <object type="pilot_expenses" count="4">
+      <string type="form_of_payment">Cash</string>
+      <string type="distance_unit"/>
+      <string type="expense_vendor">voucher</string>
+      <string type="expense_city">test_one</string>
+      <string type="expense_attendees"/>
+      <string type="category">CPAN</string>
+      <string type="expense_note"/>
+      <string type="type_of_expense">Parking</string>
+      <guid type="guid">565c13a64979041663bd3b5416fe107e</guid>
+      <numeric type="expense_amount">500/100</numeric>
+      <time type="expense_date">2006-11-04T00:00:00Z</time>
+      <gint32 type="currency_code">22</gint32>
+      <kvp type="currency_lookup" path="expense/currency/mnemonic" value="string">GBP</kvp>
+      <kvp type="currency_lookup" path="expense/currency/symbol" value="string">£</kvp>
+      <kvp type="currency_lookup" path="expense/currency/fraction" value="gint64">100</kvp>
+    </object>
+  </book>
+</qof-qsf>

@@ -2,6 +2,7 @@ Changes
 MANIFEST
 META.yml # Will be created by "make dist"
 test.pl
+qsf-test.xml
 Makefile.PL
 README
 lib/XML/QOFQSF.pm
