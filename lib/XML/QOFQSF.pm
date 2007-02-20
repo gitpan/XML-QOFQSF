@@ -1,17 +1,19 @@
 package XML::QOFQSF;
-use Carp;
 use warnings;
 use strict;
 use XML::Simple;
 use XML::Writer;
+use IO::File;
 use Class::Struct;
 use Date::Parse;
 use Date::Format;
+use Math::BigInt;
+use Data::Random qw(:all);
 require Exporter;
 
 use vars qw (@ISA @EXPORT_OK);
 @ISA               = qw(Exporter);
-@EXPORT_OK         = qw(QSFParse);
+@EXPORT_OK         = qw(QSFParse QSFWrite);
 
 struct (Account => {
 	"desc" => '$',
@@ -138,11 +140,11 @@ struct (gncInvoice => {
 });
 
 struct (gncJob => {
-        "id" => '$',
-        "reference" => '$',
-        "name" => '$',
-        "guid" => '$',
-        "active" => '$',
+	"id" => '$',
+	"reference" => '$',
+	"name" => '$',
+	"guid" => '$',
+	"active" => '$',
 });
 
 struct (Expense => {
@@ -161,6 +163,13 @@ struct (Expense => {
 	"kvp_mnemonic" => '$',
 	"kvp_string" => '$',
 	"kvp_fraction" => '$',
+	# end of external values.
+	# numeric handlers
+	"amt_numerator" => '$',
+	"amt_denominator" => '$',
+	# kvp handlers
+	"kvp_key" => '$',
+	"kvp_prefix" => '$',
 });
 
 struct (Contact => {
@@ -208,8 +217,108 @@ struct (Appointment => {
 	"alarm_advance" => '$',
 });
 
+struct (ToDo => {
+	"todo_note" => '$',
+	"todo_description" => '$',
+	"category" => '$',
+    "guid" => '$',
+    "date_due" => '$',
+    "todo_priority" => '$',
+    "todo_complete" => '$',
+    "todo_length" => '$',
+});
+
+# %objects is the meta-data: the sequence and type of data.
+my %objects = ();
+
+# @foo_seq is the sequence of each field in the XML or database.
+my @todo_seq = (
+	[ { 'todo_note' => 'string' } ],
+	[ { 'category' => 'string' } ],
+	[ { 'todo_description' => 'string' } ],
+	[ { 'guid' => 'guid' } ],
+	[ { 'date_due' => 'time' } ],
+	[ { 'todo_priority' => 'gint32' } ],
+	[ { 'todo_complete' => 'gint32' } ],
+	[ { 'todo_length' => 'gint32' } ],
+	);
+
+my @exp_seq = (
+	[ { 'form_of_payment' => 'string' } ],
+	[ { 'distance_unit' => 'string' } ],
+	[ { 'expense_vendor' => 'string' } ],
+	[ { 'expense_city' => 'string' } ],
+	[ { 'expense_attendees' => 'string' } ],
+	[ { 'category' => 'string' } ],
+	[ { 'expense_note' => 'string' } ],
+	[ { 'type_of_expense' => 'string' } ],
+	[ { 'guid' => 'guid' } ],
+	[ { 'expense_amount' => 'numeric' } ],
+	[ { 'expense_date' => 'time' } ],
+	[ { 'currency_code' => 'gint32' } ],
+	[ { 'kvp_mnemonic' => 'string' } ],
+	[ { 'kvp_string' => 'string' } ],
+	[ { 'kvp_fraction' => 'gint64' } ],
+	);
+
+my @app_seq = (
+	[ { 'category' => 'string' } ],
+	[ { 'note' => 'string' } ],
+	[ { 'repeat_type' => 'string' } ],
+	[ { 'description' => 'string' } ],
+	[ { 'advance_unit' => 'string' } ],
+	[ { 'repeat_day' => 'string' } ],
+	[ { 'repeat_week_start' => 'string' } ],
+	[ { 'guid' => 'guid' } ],
+	[ { 'use_alarm' => 'boolean' } ],
+	[ { 'repeat_forever' => 'boolean' } ],
+	[ { 'transient_repeat' => 'boolean' } ],
+	[ { 'untimed_event' => 'boolean' } ],
+	[ { 'start_time' => 'time' } ],
+	[ { 'end_time'=> 'time' } ],
+	[ { 'repeat_end' => 'time' } ],
+	[ { 'repeat_frequency' => 'gint32' } ],
+	[ { 'exception_count' => 'gint32' } ],
+	[ { 'alarm_advance' => 'gint32' } ],
+	);
+
+my @addr_seq = (
+	[ { 'entryCity' => 'string' } ],
+	[ { 'entryCustom4' => 'string' } ],
+	[ { 'entryPhone1' => 'string' } ],
+	[ { 'entryZip' => 'string' } ],
+	[ { 'entryLastname' => 'string' } ],
+	[ { 'entryPhone2' => 'string' } ],
+	[ { 'entryNote' => 'string' } ],
+	[ { 'category' => 'string' } ],
+	[ { 'entryFirstname' => 'string' } ],
+	[ { 'entryPhone3' => 'string' } ],
+	[ { 'entryTitle' => 'string' } ],
+	[ { 'entryPhone4' => 'string' } ],
+	[ { 'entryCompany' => 'string' } ],
+	[ { 'entryPhone5' => 'string' } ],
+	[ { 'entryState' => 'string' } ],
+	[ { 'entryCustom1' => 'string' } ],
+	[ { 'entryAddress' => 'string' } ],
+	[ { 'entryCustom2' => 'string' } ],
+	[ { 'entryCountry' => 'string' } ],
+	[ { 'entryCustom3' => 'string' } ],
+	[ { 'guid' => 'guid' } ],
+	);
+
+# todo : add the rest of the objects.
+
+$objects{'pilot_todo'} = \@todo_seq;
+$objects{'pilot_address'} = \@addr_seq;
+$objects{'pilot_datebook'} = \@app_seq;
+
+# todo : QofNumeric not fully handled yet.
+#$objects{'pilot_expenses'} = \@exp_seq;
+#$objects{'gpe_expenses'} = \@exp_seq;
+
+# %object_list is the instance data
 my %object_list;
-my (@expenses, @contacts, @appointments, @splits, @accounts, @transactions, @gncinvoices, @gnccustomers, @gncbillterms, @gncaddresses, @gncentries, @gncjobs );
+my (@expenses, @contacts, @appointments, @splits, @accounts, @transactions, @gncinvoices, @gnccustomers, @gncbillterms, @gncaddresses, @gncentries, @gncjobs, @todos );
 
 my $build = sub
 {
@@ -288,6 +397,19 @@ my $build = sub
 				$c->guid($g->{'guid'}->[0]->{content});
 				push @contacts, $c;
 			}
+			if ($g->{'type'} eq 'pilot_todo')
+			{
+				my $t = new ToDo;
+				$t->todo_note($g->{'string'}->[0]->{content});
+				$t->todo_description($g->{'string'}->[1]->{content});
+				$t->category($g->{'string'}->[2]->{content});
+				$t->guid($g->{'guid'}->[0]->{content});
+				$t->date_due(str2time($g->{'time'}->{content}));
+				$t->todo_priority($g->{'gint32'}->[0]->{content});
+				$t->todo_complete($g->{'gint32'}->[1]->{content});
+				$t->todo_length($g->{'gint32'}->[2]->{content});
+				push @todos, $t;
+			}
 			if ($g->{type} eq 'Trans')
 			{
 				my $t = new Trans;
@@ -338,6 +460,7 @@ my $build = sub
 					$s->memo($g->{'string'}->[0]->{content});
 				}
 				if ($g->{'numeric'}->[0]->{type} eq 'share-price') {
+				# TODO: recreate the numeric for QSFWrite?
 					$s->share_price(eval($g->{'numeric'}->[0]->{content}));
 					$s->amount(eval($g->{'numeric'}->[1]->{content}));
 				}
@@ -450,18 +573,18 @@ my $build = sub
 			}
 			if ($g->{type} eq 'gncAddress')
 			{
-				my $obj = new gncAddress;
-				$obj->city($g->{'string'}->[0]->{content});
-				$obj->street($g->{'string'}->[1]->{content});
-				$obj->fax($g->{'string'}->[2]->{content});
-				$obj->number($g->{'string'}->[3]->{content});
-				$obj->name($g->{'string'}->[4]->{content});
-				$obj->email($g->{'string'}->[5]->{content});
-				$obj->locality($g->{'string'}->[6]->{content});
-				$obj->phone($g->{'string'}->[7]->{content});
-				$obj->guid($g->{'guid'}->[0]->{content});
-				$obj->a_owner($g->{'guid'}->[1]->{content});
-				push @gncaddresses, $obj;
+				my $ga = new gncAddress;
+				$ga->city($g->{'string'}->[0]->{content});
+				$ga->street($g->{'string'}->[1]->{content});
+				$ga->fax($g->{'string'}->[2]->{content});
+				$ga->number($g->{'string'}->[3]->{content});
+				$ga->name($g->{'string'}->[4]->{content});
+				$ga->email($g->{'string'}->[5]->{content});
+				$ga->locality($g->{'string'}->[6]->{content});
+				$ga->phone($g->{'string'}->[7]->{content});
+				$ga->guid($g->{'guid'}->[0]->{content});
+				$ga->a_owner($g->{'guid'}->[1]->{content});
+				push @gncaddresses, $ga;
 			}
 		}
 	}
@@ -522,19 +645,38 @@ my $build = sub
 	}
 };
 
+my $guid = sub
+{
+	my @random_chars = rand_chars( set => 'numeric', min => 8, max => 8, shuffle => 1 );
+	my $r = join("", @random_chars);
+	@random_chars = rand_chars( set => 'numeric', min => 8, max => 8, shuffle => 1 );
+	$r .= join("", @random_chars);
+	@random_chars = rand_chars( set => 'numeric', min => 8, max => 8, shuffle => 1 );
+	$r .= join("", @random_chars);
+	@random_chars = rand_chars( set => 'numeric', min => 8, max => 8, shuffle => 1 );
+	$r .= join("", @random_chars);
+	@random_chars = rand_chars( set => 'numeric', min => 8, max => 8, shuffle => 1 );
+	$r .= join("", @random_chars);
+	my $x = Math::BigInt->new("$r");
+	my $g = $x->as_hex();
+	$g =~ s/^0x//;
+	$g =~ /([0-9a-f]{32})/;
+	return $1;
+};
+
 =head1 NAME
 
-XML::QOFQSF - Parse QSF XML files created by the QOF XML backend
+XML::QOFQSF - convert personal data to and from QSF XML files
 
-Support for the QOF SQLite backend will be added in due course.
+Support for the QOF SQLite backend will be added in a separate module in due course.
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
@@ -544,7 +686,7 @@ simply send me a sample QSF XML file. A script to create the content is also pla
 
 A little code snippet.
 
- use XML::QOFQSF qw(QSFParse);
+ use XML::QOFQSF qw(QSFParse QSFWrite);
  use Date::Parse;
  use Date::Format;
 
@@ -569,11 +711,71 @@ A little code snippet.
 
  print "Total: $total_miles\n";
 
+ my $c = new Appointment;
+ $c->description("short summary");
+ $c->guid($guid_str);  # QOF identifier like 5429307bcae611b59b4e2bedc77b2d68
+ $c->note("long description");
+ $c->repeat_type("repeatNone"); # dictated by pilot-qof source
+ $c->repeat_forever("false");   # boolean
+ $c->use_alarm("false");        # boolean
+ $c->untimed_event("false");    #boolean
+ $c->transient_repeat("false");
+ $c->start_time("2003-08-08T09:00:00Z");
+ $c->end_time("2003-08-08T17:30:00Z");
+ $c->repeat_end("2003-08-08T17:30:00Z");
+ $c->repeat_frequency(0);
+ $c->exception_count(0);
+ $c->alarm_advance(0);
+
+ my %obj;
+ my @datebook=();
+ push @datebook, $c;
+
+ $obj{'pilot_datebook'} = \@datebook;
+
+ QSFWrite(\%obj);
+
 =head1 EXPORT
 
-XML::QOFQSF exports a single function, to parse a QSF XML file. Data from
-the file is read into an array of objects of each supported type and references
-to each array are added to the object_list hash using the object name as the key.
+XML::QOFQSF exports two functions, QSFParse to parse a QSF XML file and
+QSFWrite to write data to a new QSF XML file. QSFParse reads data from
+the file into an array of objects of each supported type and references
+to each array are added to the object_list hash using the object name 
+as the key. A similar hash can be passed to QSFWrite to generate a new
+QSF XML file.
+
+=head1 Query Object Framework (QOF)
+
+QOF, the Query Object Framework, provides a set of C Language utilities 
+for performing generic structured complex queries on a set of data held 
+by a set of C/C++ objects. This framework is unique in that it does NOT 
+require SQL or any database at all to perform the query. Thus, it allows 
+programmers to add query support to their applications without having to 
+hook into an SQL Database.
+
+Typically, if you have an app, and you want to add the ability to show 
+a set of reports, you will need the ability to perform queries in order 
+to get the data you need to show a report. Of course, you can always 
+write a set of ad-hoc subroutines to return the data that you need. But 
+this kind of a programming style is not extensible: just wait till you 
+get a user who wants a slightly different report.
+
+The idea behind QOF is to provide a generic framework so that any query 
+can be executed, including queries designed by the end-user. Normally, 
+this is possible only if you use a database that supports SQL, and then 
+only if you deeply embed the database into your application. QOF provides 
+simpler, more natural way to work with objects.
+
+XML::QOFQSF extends this functionality to provide a simple, scriptable,
+interface to QOF data. When combined with the SQL-type queries supported
+by the QOF application, this provides a flexible method for handling, 
+organising, converting and synchronising all kinds of compatible data.
+
+Currently, QOF applications are based around PIM data (Personal Information
+Management) like contacts, calendar, expenses and todo lists. QOF is also
+an integral part of GnuCash and support for financial objects is pending
+(when the cashutil application is stable). In theory, QOF can be used with
+any kind of data that can be expressed in the variables available.
 
 =head1 OBJECTS
 
@@ -581,6 +783,11 @@ pilot-qof objects (pilot_address, pilot_expenses, pilot_datebook
 and pilot_todo) are supported. gpe-expenses is also supported. Outline
 support is included for cashutil objects but as cashutil is currently
 unreleased, full support is pending.
+
+XML::QOFQSF objects are identical to the Query Object Framework (QOF) 
+Objects used by applications like pilot-qof. The module is not intended to
+be a perl binding of any kind, merely a data conduit that understands the
+various elements of a QOF Object. 
 
 L<http://qof.sourceforge.net/>
 
@@ -590,12 +797,130 @@ L<http://gpe-expenses.sourceforge.net/>
 
 L<http://cashutil.sourceforge.net/>
 
+The Perl structs follow the QSF XML tag names and XML::QOFQSF expects values
+that match the underlying QOF object - as output by QSF XML. Variable names
+must therefore comply with XML rules for attribute values and with Perl syntax
+rules - e.g. foo-bar is invalid, use foo_bar instead. The same variable names
+are also used as field names in SQLite.
+
+Detailed information on QSF variables:
+L<http://code.neil.williamsleesmill.me.uk/qsf.html>
+
+=over 2
+
+=item *
+
+B<string> : any valid XML/Perl string.
+
+B<guid> : Original QOF GUID, if preserved, otherwise blank for new.
+
+B<boolean> : valid XML boolean, true or false.
+
+B<numeric> : Not fully supported in XML::QOFQSF yet, these are precise
+numerical variables expressed as a numerator and denominator: 599/100
+= 5.99 or 5456321/148547 = 36.73127697 - see QOF for more information.
+
+B<time> : xsd:dateTime format which follows the ISO 8601 standard in the 
+Coordinated Universal Time (UTC) syntax to be timezone independent. This 
+generates timestamps of the form: 2004-11-29T19:15:34Z - you can reproduce 
+the same timestamps with time2str from Date::Format using the template: 
+C<"%Y-%m-%dT%H:%M:%SZ"> or with the GNU C Library formatting string 
+C<%Y-%m-%dT%H:%M:%SZ> - remember to use gmtime() NOT localtime()!. From 
+the command line, use the -u switch with the date command: 
+C<date -u +%Y-%m-%dT%H:%M:%SZ>. Note that the QOF library can deal with
+dates far outside the range of GNU C, date and many Perl modules because
+dates are handled as 64bit signed values.
+
+B<gint32> : 32bit integer
+
+B<gint64> : 64bit integer
+
+B<double> : Unused in XML::QOFQSF (no objects currently use it).
+
+B<char> : Single character field.
+
+B<kvp> : Key-value pairs. Incomplete support in XML::QOFQSF so far.
+
+=back
+
+C<
+struct (ToDo =E<gt> { 
+  "todo_note" =E<gt> '$', 
+  "todo_description" =E<gt> '$', 
+  "category" =E<gt> '$', 
+  "guid" =E<gt> '$', 
+  "date_due" =E<gt> '$',
+  "todo_priority" =E<gt> '$',
+  "todo_complete" =E<gt> '$',
+  "todo_length" =E<gt> '$',
+});
+>
+
+C<
+E<lt>object type="pilot_todo" count="1"E<gt>
+  E<lt>string type="todo_note"/E<gt>
+  E<lt>string type="todo_description"E<gt>short summaryE<lt>/stringE<gt>
+  E<lt>string type="category"E<gt>BusinessE<lt>/stringE<gt>
+  E<lt>guid type="guid"E<gt>a018fa4d88d7439bbe0c94978ba78c82E<lt>/guidE<gt>
+  E<lt>time type="date_due"E<gt>2005-07-27T00:00:00ZE<lt>/timeE<gt>
+  E<lt>gint32 type="todo_priority"E<gt>1E<lt>/gint32E<gt>
+  E<lt>gint32 type="todo_complete"E<gt>1E<lt>/gint32E<gt>
+  E<lt>gint32 type="todo_length"E<gt>0E<lt>/gint32E<gt>
+E<lt>/objectE<gt>
+>
+
+QOF Objects can also reference other QOF Objects via the GUID - 
+support for this functionality is pending in XML::QOFQSF.
+
+=head1 QOF GUID
+
+QOF uses 128bit identifiers expressed as 32bit hexadecimal strings. Where these
+strings are preserved in the converted data (e.g. as UID fields), XML::QOFQSF
+can use these strings to recreate the original GUID. This can be used to retain
+data integrity by uniquely identifying instances across formats. If a GUID is
+lost for any reason, XML::QOFQSF will create a new GUID - methods exist in the
+main QOF library (written in C) to merge such instances into other datasets.
+
+=head1 SUPPORT
+
+For detailed support on QOF Objects, QSF XML, XML::QOFQSF or datafreedom-perl,
+please use the QOF-devel mailing list:
+
+L<http://lists.sourceforge.net/lists/listinfo/qof-devel>
+
+=head1 SCRIPTS
+
+XML::QOFQSF was written to support the 'datafreedom' scripts developed
+for 'pilot-qof' which will probably become a package in their own right.
+
+L<http://www.data-freedom.org/>
+
+Examples:
+New scripts are continually being added to the datafreedom packages. Some
+existing scripts packaged with F<datafreedom-perl> include:
+
+=over 2
+
+=item *
+
+B<dfxml-invoice> : parse a QSF XML file and prepare a simple invoice
+
+F<pilot-qof> I<-x data.xml --invoice-city -t 2006-11-09> | F<dfxml-invoice> -
+
+=item *
+
+B<dfical-datebook> : parse an iCal file and create a QSF XML pilot_datebook instance
+
+F<dfical-datebook> F<calendar.ics>
+
+=back
+
 =head1 FUNCTIONS
 
 =head2 QSFParse
 
-Passed a QSF XML filename, returns a hash of array references, indexed by the
-name of the objects found in the QSF XML file.
+Passed a QSF XML filename (or '-' for stdin), returns a hash of array references, 
+indexed by the name of the objects found in the QSF XML file.
 
 =cut
 
@@ -608,6 +933,7 @@ sub QSFParse {
 	$object_list{'pilot_expenses'} = \@expenses;
 	$object_list{'gpe_expenses'} = \@expenses;
 	$object_list{'pilot_datebook'} = \@appointments;
+	$object_list{'pilot_todo'} = \@todos;
 	$object_list{'Split'} = \@splits;
 	$object_list{'Account'} = \@accounts;
 	$object_list{'Trans'} = \@transactions;
@@ -618,6 +944,76 @@ sub QSFParse {
 	$object_list{'gncCustomer'} = \@gnccustomers;
 	$object_list{'gncJob'} = \@gncjobs;
 	return %object_list;
+}
+
+=head2 QSFWrite
+
+Passed a hash of array references containing QOF objects. The hash must be indexed by
+the name of the objects. Use QSFParse to obtain an example hash. Prints the XML to stdout.
+
+=cut
+
+sub QSFWrite
+{
+	my $output = new IO::File("");
+	my $qofns = "http://qof.sourceforge.net/";
+	my $writer = new XML::Writer(NAMESPACES => 1, OUTPUT => $output, DATA_MODE => 1,
+						DATA_INDENT => 2, PREFIX_MAP => {$qofns => ''}, ENCODING => 'UTF-8');
+	$writer->xmlDecl();
+	$writer->startTag([$qofns, "qof-qsf"]);
+	$writer->startTag("book", "count" => '1');
+	$writer->startTag("book-guid");
+	my $guid_str = $guid->();
+	$writer->characters("$guid_str");
+	$writer->endTag("book-guid");
+	my $count = 0;
+	my ($obj)=@_;
+	# foreach type of object
+	foreach my $type (keys %$obj)
+	{
+		my $dataset = $$obj{$type};
+		# foreach instance of one type of object
+		foreach my $data (@$dataset)
+		{
+			$count++;
+			$writer->startTag("object", 'type' => $type, 'count' => "$count");
+			my $sequence = $objects{$type};
+			# read the parameters in a set sequence
+			foreach my $sequence_hash (@$sequence)
+			{
+				# each sequence hash and field hash only has one entry.
+				my $field_hash = $sequence_hash->[0];
+				my $field = (keys (%$field_hash))[0];
+				my $param = $$field_hash{$field};
+				# handle guid specially - generate one if not found in original.
+				if ($field eq 'guid')
+				{
+					$writer->startTag($param, 'type' => $field);
+					if ($data->$field) { $writer->characters($data->$field); }
+					else {
+						my $guid_str = $guid->();
+						$writer->characters("$guid_str");
+					}
+					$writer->endTag('guid');
+					next;
+				}
+				if (defined $data->$field)
+				{
+					$writer->startTag($param, 'type' => $field);
+					$writer->characters($data->$field);
+						$writer->endTag($param);
+				}
+				else
+				{
+					$writer->emptyTag($param, 'type' => $field);
+				}
+			}
+			$writer->endTag('object');
+		}
+	}
+	$writer->endTag("book");
+	$writer->endTag("qof-qsf");
+	$writer->end();
 }
 
 =head1 AUTHOR
