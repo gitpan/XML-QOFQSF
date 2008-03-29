@@ -15,6 +15,7 @@ WriteMakefile(
 	'Class::Struct' => 0,
 	'Date::Parse' => 0,
 	'Date::Format' => 0,
+	'Data::Random' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'XML-QOFQSF-*' },

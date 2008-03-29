@@ -1,5 +1,8 @@
 Revision history for XML-QOFQSF
 
+0.04	29-Mar-2008/08:14
+	Correct the dependency info in Makefile.PL
+
 0.03	20-Feb-2007/10:10
 	Add write support for three pilot-qof objects,
 	more pending.

@@ -1,7 +1,7 @@
 XML-QOFQSF
 
 Dependencies: 
-XML::Simple, XML::Writer, Class::Struct, Date::Parse, Date::Format.
+XML::Simple, XML::Writer, Class::Struct, Date::Parse, Date::Format, Data::Random.
 
 OBJECTS
 
