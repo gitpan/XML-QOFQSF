@@ -311,114 +311,245 @@ my @addr_seq = (
 $objects{'pilot_todo'} = \@todo_seq;
 $objects{'pilot_address'} = \@addr_seq;
 $objects{'pilot_datebook'} = \@app_seq;
-
-# todo : QofNumeric not fully handled yet.
-#$objects{'pilot_expenses'} = \@exp_seq;
-#$objects{'gpe_expenses'} = \@exp_seq;
+$objects{'pilot_expenses'} = \@exp_seq;
+$objects{'gpe_expenses'} = \@exp_seq;
 
 # %object_list is the instance data
 my %object_list;
-my (@expenses, @contacts, @appointments, @splits, @accounts, @transactions, @gncinvoices, @gnccustomers, @gncbillterms, @gncaddresses, @gncentries, @gncjobs, @todos );
+my (@expenses, @contacts, @appointments, @splits, @accounts,
+	@transactions, @gncinvoices, @gnccustomers, @gncbillterms,
+	@gncaddresses, @gncentries, @gncjobs, @todos );
 
 my $build = sub
 {
 	my $doc = shift;
+	@expenses = @contacts = @appointments = @splits = @accounts = ();
+	@transactions = @gncinvoices = @gnccustomers = @gncbillterms = ();
+	@gncaddresses = @gncentries = @gncjobs = @todos = ();
 	foreach my $key (keys (%{$doc->{book}})){
 		next if ($key ne "object");
 		my @object = (@{$doc->{book}->{object}});
 		foreach my $g (@object)
 		{
-			if (($g->{type} eq 'pilot_expenses') || ($g->{type} eq 'gpe_expenses'))
+			if (($g->{type} eq 'pilot_expenses') or ($g->{type} eq 'gpe_expenses'))
 			{
 				my $e = new Expense;
-				$e->form_of_payment($g->{'string'}->[0]->{content});
-				$e->distance_unit($g->{'string'}->[1]->{content});
-				$e->expense_vendor($g->{'string'}->[2]->{content});
-				$e->expense_city($g->{'string'}->[3]->{content});
-				$e->expense_attendees($g->{'string'}->[4]->{content});
-				$e->category($g->{'string'}->[5]->{content});
-				$e->expense_note($g->{'string'}->[6]->{content});
-				$e->type_of_expense($g->{'string'}->[7]->{content});
-				$e->guid($g->{'guid'}->[0]->{content});
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$e->form_of_payment ($s->{'content'})
+						if ($s->{'type'} eq 'form_of_payment');
+					$e->distance_unit ($s->{'content'})
+						if ($s->{'type'} eq 'distance_unit');
+					$e->expense_vendor ($s->{'content'})
+						if ($s->{'type'} eq 'expense_vendor');
+					$e->expense_city ($s->{'content'})
+						if ($s->{'type'} eq 'expense_city');
+					$e->expense_attendees ($s->{'content'})
+						if ($s->{'type'} eq 'expense_attendees');
+					$e->category ($s->{'content'})
+						if ($s->{'type'} eq 'category');
+					$e->expense_note ($s->{'content'})
+						if ($s->{'type'} eq 'expense_note');
+					$e->type_of_expense ($s->{'content'})
+						if ($s->{'type'} eq 'type_of_expense');
+				}
+				my $guids = $g->{'guid'};
+				foreach my $s (@$guids)
+				{
+					$e->guid ($s->{'content'})
+						if ($s->{'type'} eq 'guid');
+				}
 				$e->expense_amount(eval($g->{'numeric'}->{content}));
 				$e->expense_date(str2time($g->{'time'}->{content}));
 				$e->currency_code($g->{'gint32'}->{content});
-				$e->kvp_mnemonic($g->{'kvp'}->[0]->{value});
-				$e->kvp_string($g->{'kvp'}->[1]->{value});
-				$e->kvp_fraction($g->{'kvp'}->[2]->{value});
+				my $kvps = $g->{'kvp'};
+				foreach my $s (@$kvps)
+				{
+					$e->kvp_mnemonic($s->{'content'})
+						if ($s->{'path'} eq 'expense/currency/mnemonic');
+					$e->kvp_string($s->{'content'})
+						if ($s->{'path'} eq 'expense/currency/symbol');
+					$e->kvp_fraction($s->{'content'})
+						if ($s->{'path'} eq 'expense/currency/fraction');
+				}
 				push @expenses, $e;
 			}
 			if ($g->{type} eq 'pilot_datebook')
 			{
 				my $d = new Appointment;
-				$d->category($g->{'string'}->[0]->{content});
-				$d->note($g->{'string'}->[1]->{content});
-				$d->repeat_type($g->{'string'}->[2]->{content});
-				$d->description($g->{'string'}->[3]->{content});
-				$d->advance_unit($g->{'string'}->[4]->{content});
-				$d->repeat_day($g->{'string'}->[5]->{content});
-				$d->repeat_week_start($g->{'string'}->[6]->{content});
-				$d->guid($g->{'guid'}->[0]->{content});
-				$d->use_alarm($g->{'boolean'}->[0]->{content});
-				$d->repeat_forever($g->{'boolean'}->[1]->{content});
-				$d->transient_repeat($g->{'boolean'}->[2]->{content});
-				$d->untimed_event($g->{'boolean'}->[3]->{content});
-				$d->start_time(str2time($g->{'time'}->[0]->{content}));
-				$d->end_time(str2time($g->{'time'}->[1]->{content}));
-				$d->repeat_end(str2time($g->{'time'}->[2]->{content}));
-				$d->repeat_frequency($g->{'gint32'}->[0]->{content});
-				$d->exception_count($g->{'gint32'}->[1]->{content});
-				$d->alarm_advance($g->{'gint32'}->[2]->{content});
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$d->category ($s->{'content'})
+						if ($s->{'type'} eq 'category');
+					$d->note ($s->{'content'})
+						if ($s->{'type'} eq 'note');
+					$d->repeat_type ($s->{'content'})
+						if ($s->{'type'} eq 'repeat_type');
+					$d->description ($s->{'content'})
+						if ($s->{'type'} eq 'description');
+					$d->advance_unit ($s->{'content'})
+						if ($s->{'type'} eq 'advance_unit');
+					$d->repeat_day ($s->{'content'})
+						if ($s->{'type'} eq 'repeat_day');
+					$d->repeat_week_start ($s->{'content'})
+						if ($s->{'type'} eq 'repeat_week_start');
+				}
+				my $guids = $g->{'guid'};
+				foreach my $s (@$guids)
+				{
+					$d->guid ($s->{'content'})
+						if ($s->{'type'} eq 'guid');
+				}
+				my $booleans = $g->{'boolean'};
+				foreach my $s (@$booleans)
+				{
+					$d->use_alarm ($s->{'content'})
+						if ($s->{'type'} eq 'use_alarm');
+					$d->repeat_forever ($s->{'content'})
+						if ($s->{'type'} eq 'repeat_forever');
+					$d->transient_repeat ($s->{'content'})
+						if ($s->{'type'} eq 'transient_repeat');
+					$d->untimed_event ($s->{'content'})
+						if ($s->{'type'} eq 'untimed_event');
+				}
+				my $times = $g->{'time'};
+				foreach my $s (@$times)
+				{
+					$d->start_time (str2time($s->{content}))
+						if ($s->{'type'} eq 'start_time');
+					$d->end_time (str2time($s->{content}))
+						if ($s->{'type'} eq 'end_time');
+					$d->repeat_end (str2time($s->{content}))
+						if ($s->{'type'} eq 'repeat_end');
+				}
+				my $ints = $g->{'gint32'};
+				foreach my $s (@$ints)
+				{
+					$d->repeat_frequency ($s->{content})
+						if ($s->{'type'} eq 'repeat_frequency');
+					$d->exception_count ($s->{content})
+						if ($s->{'type'} eq 'exception_count');
+					$d->alarm_advance($s->{content})
+						if ($s->{'type'} eq 'alarm_advance');
+				}
 				push @appointments, $d;
 			}
 			if ($g->{type} eq 'pilot_address')
 			{
 				my $c = new Contact;
-				$c->entryCity($g->{'string'}->[0]->{content});
-				$c->entryCustom4($g->{'string'}->[1]->{content});
-				$c->entryPhone1($g->{'string'}->[2]->{content});
-				$c->entryZip($g->{'string'}->[3]->{content});
-				$c->entryLastname($g->{'string'}->[4]->{content});
-				$c->entryPhone2($g->{'string'}->[5]->{content});
-				$c->entryNote($g->{'string'}->[6]->{content});
-				$c->category($g->{'string'}->[7]->{content});
-				$c->entryFirstname($g->{'string'}->[8]->{content});
-				$c->entryPhone3($g->{'string'}->[9]->{content});
-				$c->entryTitle($g->{'string'}->[10]->{content});
-				$c->entryPhone4($g->{'string'}->[11]->{content});
-				$c->entryCompany($g->{'string'}->[12]->{content});
-				$c->entryPhone5($g->{'string'}->[13]->{content});
-				$c->entryState($g->{'string'}->[14]->{content});
-				$c->entryCustom1($g->{'string'}->[15]->{content});
-				$c->entryAddress($g->{'string'}->[16]->{content});
-				$c->entryCustom2($g->{'string'}->[17]->{content});
-				$c->entryCountry($g->{'string'}->[18]->{content});
-				$c->entryCustom3($g->{'string'}->[19]->{content});
-				$c->guid($g->{'guid'}->[0]->{content});
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$c->entryCity($s->{content})
+						if ($s->{'type'} eq 'entryCity');
+					$c->entryCustom4($s->{content})
+						if ($s->{'type'} eq 'entryCustom4');
+					$c->entryPhone1($s->{content})
+						if ($s->{'type'} eq 'entryPhone1');
+					$c->entryZip($s->{content})
+						if ($s->{'type'} eq 'entryZip');
+					$c->entryLastname($s->{content})
+						if ($s->{'type'} eq 'entryLastname');
+					$c->entryPhone2($s->{content})
+						if ($s->{'type'} eq 'entryPhone2');
+					$c->entryNote($s->{content})
+						if ($s->{'type'} eq 'entryNote');
+					$c->category($s->{content})
+						if ($s->{'type'} eq 'category');
+					$c->entryFirstname($s->{content})
+						if ($s->{'type'} eq 'entryFirstname');
+					$c->entryPhone3($s->{content})
+						if ($s->{'type'} eq 'entryPhone3');
+					$c->entryTitle($s->{content})
+						if ($s->{'type'} eq 'entryTitle');
+					$c->entryPhone4($s->{content})
+						if ($s->{'type'} eq 'entryPhone4');
+					$c->entryCompany($s->{content})
+						if ($s->{'type'} eq 'entryCompany');
+					$c->entryPhone5($s->{content})
+						if ($s->{'type'} eq 'entryPhone5');
+					$c->entryState($s->{content})
+						if ($s->{'type'} eq 'entryState');
+					$c->entryCustom1($s->{content})
+						if ($s->{'type'} eq 'entryCustom1');
+					$c->entryAddress($s->{content})
+						if ($s->{'type'} eq 'entryAddress');
+					$c->entryCustom2($s->{content})
+						if ($s->{'type'} eq 'entryCustom2');
+					$c->entryCountry($s->{content})
+						if ($s->{'type'} eq 'entryCountry');
+					$c->entryCustom3($s->{content})
+						if ($s->{'type'} eq 'entryCustom3');
+				}
+				my $guids = $g->{'guid'};
+				foreach my $s (@$guids)
+				{
+					$c->guid ($s->{'content'})
+						if ($s->{'type'} eq 'guid');
+				}
 				push @contacts, $c;
 			}
 			if ($g->{'type'} eq 'pilot_todo')
 			{
 				my $t = new ToDo;
-				$t->todo_note($g->{'string'}->[0]->{content});
-				$t->todo_description($g->{'string'}->[1]->{content});
-				$t->category($g->{'string'}->[2]->{content});
-				$t->guid($g->{'guid'}->[0]->{content});
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$t->todo_note($s->{content})
+						if ($s->{'type'} eq 'todo_note');
+					$t->todo_description($s->{content})
+						if ($s->{'type'} eq 'todo_description');
+					$t->category($s->{content})
+						if ($s->{'type'} eq 'category');
+				}
+				my $guids = $g->{'guid'};
+				foreach my $s (@$guids)
+				{
+					$t->guid ($s->{'content'})
+						if ($s->{'type'} eq 'guid');
+				}
 				$t->date_due(str2time($g->{'time'}->{content}));
-				$t->todo_priority($g->{'gint32'}->[0]->{content});
-				$t->todo_complete($g->{'gint32'}->[1]->{content});
-				$t->todo_length($g->{'gint32'}->[2]->{content});
+				my $ints = $g->{'gint32'};
+				foreach my $s (@$ints)
+				{
+					$t->todo_priority($s->{content})
+						if ($s->{'type'} eq 'todo_priority');
+					$t->todo_complete($s->{content})
+						if ($s->{'type'} eq 'todo_complete');
+					$t->todo_length($s->{content})
+						if ($s->{'type'} eq 'todo_length');
+				}
 				push @todos, $t;
 			}
 			if ($g->{type} eq 'Trans')
 			{
 				my $t = new Trans;
-				$t->desc($g->{'string'}->[0]->{content});
-				$t->notes($g->{'string'}->[1]->{content});
-				$t->num($g->{'string'}->[2]->{content});
-				$t->guid($g->{'guid'}->[0]->{content});
-				$t->date_posted(str2time($g->{'time'}->[0]->{content}));
-				$t->date_entered(str2time($g->{'time'}->[0]->{content}));
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$t->desc($s->{content})
+						if ($s->{'type'} eq 'desc');
+					$t->notes($s->{content})
+						if ($s->{'type'} eq 'notes');
+					$t->num($s->{content})
+						if ($s->{'type'} eq 'num');
+				}
+				my $guids = $g->{'guid'};
+				foreach my $s (@$guids)
+				{
+					$t->guid ($s->{'content'})
+						if ($s->{'type'} eq 'guid');
+				}
+				my $times = $g->{'time'};
+				foreach my $s (@$times)
+				{
+					$t->date_posted(str2time($s->{content}))
+						if ($s->{'type'} eq 'date_posted');
+					$t->date_entered(str2time($s->{content}))
+						if ($s->{'type'} eq 'date_entered');
+				}
 				$t->type($g->{'character'}->{content});
 				$t->kvp_path($g->{'kvp'}->{path});
 				$t->kvp_value($g->{'kvp'}->{value});
@@ -428,11 +559,20 @@ my $build = sub
 			if ($g->{type} eq 'Account')
 			{
 				my $a = new Account;
-				$a->desc($g->{'string'}->[0]->{content});
-				$a->account_type($g->{'string'}->[1]->{content});
-				$a->code($g->{'string'}->[2]->{content});
-				$a->notes($g->{'string'}->[3]->{content});
-				$a->name($g->{'string'}->[4]->{content});
+				my $strings = $g->{'string'};
+				foreach my $s (@$strings)
+				{
+					$a->desc($s->{content})
+						if ($s->{'type'} eq 'desc');
+					$a->account_type($s->{content})
+						if ($s->{'type'} eq 'account_type');
+					$a->code($s->{content})
+						if ($s->{'type'} eq 'code');
+					$a->notes($s->{content})
+						if ($s->{'type'} eq 'notes');
+					$a->name($s->{content})
+						if ($s->{'type'} eq 'name');
+				}
 				my $check = @{$g->{'guid'}};
 				if ($check == 1)
 				{
@@ -672,11 +812,11 @@ Support for the QOF SQLite backend will be added in a separate module in due cou
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 SYNOPSIS
 

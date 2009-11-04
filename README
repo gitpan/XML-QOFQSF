@@ -1,7 +1,8 @@
 XML-QOFQSF
 
 Dependencies: 
-XML::Simple, XML::Writer, Class::Struct, Date::Parse, Date::Format, Data::Random.
+XML::Simple, XML::Writer, XML::LibXML::SAX,
+Class::Struct, Date::Parse, Date::Format, Data::Random.
 
 OBJECTS
 
@@ -39,6 +40,15 @@ You can also look for information at:
 
     CPAN Ratings:
         http://cpanratings.perl.org/d/XML-QOFQSF
+
+    Subversion:
+        Browse:
+    http://pilot-qof.svn.sourceforge.net/viewvc/pilot-qof/cpan/XML-QOFQSF/libxml-qofqsf-perl/trunk/
+        Checkout:
+    http://pilot-qof.svn.sourceforge.net/svnroot/pilot-qof/cpan/XML-QOFQSF/libxml-qofqsf-perl/
+
+    Freshmeat:
+        http://freshmeat.net/projects/xml-qofqsf
 
 COPYRIGHT AND LICENCE
 

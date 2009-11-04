@@ -1,5 +1,6 @@
-Changes
+ChangeLog
 MANIFEST
+LICENCE
 META.yml # Will be created by "make dist"
 test.pl
 qsf-test.xml

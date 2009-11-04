@@ -1,0 +1,32 @@
+2009-11-04  Neil Williams  <linux@codehelp.co.uk>
+
+	* MANIFEST: Convert Changes to ChangeLog
+	* Makefile.PL: Add XML::SAX. 
+	CpanTesters fail fix: XMLin() requires either
+	XML::SAX or XML::Parser.
+	* libxml-qofqsf-perl.doap: Doap file for moap.
+	* ChangeLog (added): Replace for easier
+	tracking of changes.
+	* Changes (deleted):
+	* t/boilerplate.t : Check ChangeLog.
+
+Old revision history from Changes file.
+
+0.05	04-Nov-2009/11:45
+	Identify the values to read instead of assuming
+	a sequence.
+	Add more test cases to pick up reordering errors.
+
+0.04	29-Mar-2008/08:14
+	Correct the dependency info in Makefile.PL
+
+0.03	20-Feb-2007/10:10
+	Add write support for three pilot-qof objects,
+	more pending.
+
+0.02    22-Jan-2007/15:45
+	Quick fix release.
+
+0.01    2006-01-22/21:16
+	First version, released on an unsuspecting world.
+
